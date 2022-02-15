@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger"
+	xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd">
+
+
+	<configuration doc:name="Configuration" defaultErrorHandler-ref="${common-components.exception-strategy.default-error-handler-config-name}" />
+
+
+	<!-- Used different error expressions to select the relevant error in our custom error response body -->
+	<!-- For more information about selecting different error expressions, please go to:
+			https://docs.mulesoft.com/mule-runtime/4.3/mule-error-concept -->
+	<error-handler name="common-exception-handling">
+		<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue - APIKIT CALLS (USER CALLS)"
+			when='#[error.errorType.namespace == "APIKIT"]'>
+			<logger level="INFO" doc:name="Logger" doc:id="68f63b81-f31e-4b76-8c6b-c1f815c6072a" message="APIKIT Related Errors found"/>
+			<set-variable value="#[error]" doc:name="STORE ERROR IN VARIABLE" variableName="error" />
+			<ee:transform doc:name="TRANSFORM APIKIT ERROR">
+				<ee:message>
+					<ee:set-payload resource="dw/errors/apikit-error-response-body.dwl" />
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable resource="dw/errors/apikit-error-response-status.dwl" variableName="httpStatus" />
+				</ee:variables>
+			</ee:transform>
+		
+</on-error-continue>
+
+		<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue - JSON SCHEMA OR OTHER VALIDATION ERRORS"
+			when='#[error.errorType.namespace == "JSON" or error.errorType.namespace == "VALIDATION"]'>
+			<logger level="INFO" doc:name="Logger" doc:id="2f83bc86-b5c0-486f-886d-7813508f494d" message=" JSON SCHEMA OR OTHER VALIDATION ERRORS Found"/>
+			<set-variable value="#[error]" doc:name="STORE ERROR IN VARIABLE" variableName="error" />
+			<ee:transform doc:name="TRANSFORM VALIDATION ERROR">
+				<ee:message >
+					<ee:set-payload resource="dw/errors/validation-error-response-body.dwl" />
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable resource="dw/errors/validation-error-response-status.dwl" variableName="httpStatus" />
+				</ee:variables>
+			</ee:transform>
+		
+</on-error-continue>
+
+		<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue - MULE DATAWEAVE ERRORS OR OTHER EXPRESSION ERRORS"
+			when='#[error.errorType.namespace == "MULE" and error.errorType.identifier == "EXPRESSION"]'>
+			<logger level="INFO" doc:name="Logger" doc:id="433b0015-fc1f-47e5-b135-0e13523e88a4" message="MULE DATAWEAVE ERRORS OR OTHER EXPRESSION ERRORS found"/>
+			<set-variable value="#[error]" doc:name="STORE ERROR IN VARIABLE" variableName="error" />
+			<ee:transform doc:name="TRANSFORM EXPRESSION ERROR">
+				<ee:message>
+					<ee:set-payload resource="dw/errors/expression-error-response-body.dwl" />
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable resource="dw/errors/expression-error-response-status.dwl" variableName="httpStatus" />
+				</ee:variables>
+			</ee:transform>
+		</on-error-continue>
+
+		<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue - CUSTOM ERRORS"
+			when='#[error.errorType.namespace == "CUSTOM"]'>
+			<logger level="INFO" doc:name="Logger" doc:id="2327c12a-d1ef-4984-83ac-cc2f691abd9b" message="CUSTOM ERRORS Found"/>
+			<set-variable value="#[error]" doc:name="STORE ERROR IN VARIABLE" variableName="error" />
+			<ee:transform doc:name="TRANSFORM CUSTOM ARM ERROR">
+				<ee:message >
+					<ee:set-payload resource="dw/errors/custom-error-response-body.dwl" />
+				</ee:message>
+				<ee:variables >
+					<ee:set-variable resource="dw/errors/custom-error-response-status.dwl" variableName="httpStatus" />
+				</ee:variables>
+			</ee:transform>
+		</on-error-continue>
+
+		<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue - BACKEND CALLS"
+			when='#[error.errorType.namespace == "HTTP" or error.exception.errorMessage.typedValue? or error.exception.errorMessage.typedAttributes?]'>
+			<logger level="INFO" doc:name="Logger" doc:id="a5f48c55-7b51-4a72-8abd-a4d5c1674e85" message="BACKEND Related Error Found"/>
+			<set-variable value="#[error]" doc:name="STORE ERROR IN VARIABLE" variableName="error" />
+			<ee:transform doc:name="TRANSFORM BACKEND ERROR">
+				<ee:message>
+					<ee:set-payload resource="dw/errors/backend-error-response-body.dwl" />
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable resource="dw/errors/backend-error-response-status.dwl" variableName="httpStatus" />
+				</ee:variables>
+			</ee:transform>
+		</on-error-continue>
+
+		<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue - OTHER ERRORS" type="ANY">
+			<logger level="INFO" doc:name="Logger" doc:id="c0c950d3-e6e8-4ba3-93e5-e983131db7ea" message="Unknown Error Found"/>
+			<set-variable value="#[error]" doc:name="STORE ERROR IN VARIABLE" variableName="error" />
+			<ee:transform doc:name="TRANSFORM OTHER ERRORS">
+				<ee:message>
+					<ee:set-payload resource="dw/errors/other-or-undefined-or-unknown-error-response-body.dwl" />
+					</ee:message>
+				<ee:variables>
+					<ee:set-variable resource="dw/errors/other-or-undefined-or-unknown-error-response-status.dwl" variableName="httpStatus" />
+				</ee:variables>
+			</ee:transform>
+		</on-error-continue>
+
+	</error-handler>
+
+</mule>
